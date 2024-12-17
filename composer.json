@@ -1,0 +1,45 @@
+{
+  "name": "arraypress/google-maps-static",
+  "version": "1.0.0",
+  "description": "A PHP library for integrating with the Google Maps Static API in WordPress, providing static map image generation with support for markers, paths, styling, and custom overlays. Features WordPress error handling and customizable image generation.",
+  "type": "library",
+  "license": "GPL-2.0-or-later",
+  "homepage": "https://github.com/arraypress/google-maps-static/",
+  "authors": [
+    {
+      "name": "David Sherlock",
+      "homepage": "https://arraypress.com/"
+    }
+  ],
+  "require": {
+    "php": ">=7.4"
+  },
+  "autoload": {
+    "psr-4": {
+      "ArrayPress\\Google\\MapsStatic\\": "src/"
+    }
+  },
+  "config": {
+    "optimize-autoloader": true,
+    "sort-packages": true
+  },
+  "minimum-stability": "stable",
+  "support": {
+    "issues": "https://github.com/arraypress/google-maps-static/issues",
+    "source": "https://github.com/arraypress/google-maps-static"
+  },
+  "keywords": [
+    "google-maps",
+    "static-maps",
+    "map-images",
+    "map-markers",
+    "map-paths",
+    "map-styling",
+    "wordpress",
+    "map-integration",
+    "location-display",
+    "map-snapshots",
+    "custom-maps",
+    "map-generation"
+  ]
+}
