@@ -13,11 +13,12 @@ integration and `WP_Error` support.
 - ⚡ **WordPress Integration**: Native WP_Error support and URL escaping
 - 🛡️ **Type Safety**: Full type hinting and strict types
 - 📐 **Flexible Sizing**: Custom dimensions and scale options
-- 🌍 **Global Support**: Works with locations worldwide
+- 🌍 **Global Support**: Works with locations worldwide, with language and region settings
 - 🎯 **Multiple Formats**: Support for PNG, JPG, and GIF outputs
 - 📱 **Responsive**: Support for different scale factors
 - ✨ **Easy Implementation**: Simple, chainable API methods
 - 💾 **Media Library Integration**: Save maps directly to WordPress media library
+- 🎥 **Street View Support**: Configure heading and pitch for street view perspectives
 
 ## Requirements
 
@@ -47,10 +48,10 @@ $img_tag = $client->generate_image_tag( $map_url );
 
 // Create a map with markers
 $markers = [
-	[
-		'style'     => [ 'color' => 'red', 'label' => 'A' ],
-		'locations' => [ 'Seattle, WA' ]
-	]
+    [
+        'style'     => [ 'color' => 'red', 'label' => 'A' ],
+        'locations' => [ 'Seattle, WA' ]
+    ]
 ];
 $map_url = $client->markers( $markers );
 
@@ -66,28 +67,28 @@ $map_url     = $client->path( $path_points );
 ```php
 // Generate a map URL
 $map_url = $client->location( 'Seattle, WA', [
-	'zoom' => 14,
-	'size' => '800x600'
+    'zoom' => 14,
+    'size' => '800x600'
 ] );
 
 // Save to media library with custom settings
 $attachment_id = $client->save_to_media_library( $map_url, [
-	'title'       => 'Seattle Downtown Map',
-	'filename'    => 'seattle-downtown',
-	'description' => 'Static map of downtown Seattle',
-	'alt'         => 'Map showing downtown Seattle area',
-	'folder'      => 'google-maps/seattle' // Custom subfolder within uploads
+    'title'       => 'Seattle Downtown Map',
+    'filename'    => 'seattle-downtown',
+    'description' => 'Static map of downtown Seattle',
+    'alt'         => 'Map showing downtown Seattle area',
+    'folder'      => 'google-maps/seattle' // Custom subfolder within uploads
 ] );
 
 if ( ! is_wp_error( $attachment_id ) ) {
-	// Get the attachment URL
-	$image_url = wp_get_attachment_url( $attachment_id );
+    // Get the attachment URL
+    $image_url = wp_get_attachment_url( $attachment_id );
 
-	// Use WordPress image functions
-	echo wp_get_attachment_image( $attachment_id, 'full', false, [
-		'class'   => 'my-map-image',
-		'loading' => 'lazy'
-	] );
+    // Use WordPress image functions
+    echo wp_get_attachment_image( $attachment_id, 'full', false, [
+        'class'   => 'my-map-image',
+        'loading' => 'lazy'
+    ] );
 }
 ```
 
@@ -101,17 +102,19 @@ $map_url = $client->location( '47.6062,-122.3321' );
 
 // Location with options
 $map_url = $client->location( 'Pike Place Market, Seattle', [
-	'zoom'    => 16,
-	'size'    => '800x600',
-	'maptype' => 'roadmap'
+    'zoom'     => 16,
+    'size'     => '800x600',
+    'maptype'  => 'roadmap',
+    'language' => 'en',
+    'region'   => 'US'
 ] );
 
 // Generate image tag with custom attributes
 $img_tag = $client->generate_image_tag( $map_url, [
-	'class'  => 'my-map-image',
-	'alt'    => 'Pike Place Market Map',
-	'width'  => '800',
-	'height' => '600'
+    'class'  => 'my-map-image',
+    'alt'    => 'Pike Place Market Map',
+    'width'  => '800',
+    'height' => '600'
 ] );
 ```
 
@@ -120,31 +123,31 @@ $img_tag = $client->generate_image_tag( $map_url, [
 ```php
 // Single marker
 $markers = [
-	[
-		'style'     => [
-			'color' => 'red',
-			'size'  => 'mid',
-			'label' => 'A'
-		],
-		'locations' => [ 'Seattle, WA' ]
-	]
+    [
+        'style'     => [
+            'color' => 'red',
+            'size'  => 'mid',
+            'label' => 'A'
+        ],
+        'locations' => [ 'Seattle, WA' ]
+    ]
 ];
 
 // Multiple markers with different styles
 $markers = [
-	[
-		'style'     => [ 'color' => 'blue', 'label' => 'S' ],
-		'locations' => [ 'Space Needle, Seattle' ]
-	],
-	[
-		'style'     => [ 'color' => 'green', 'label' => 'P' ],
-		'locations' => [ 'Pike Place Market, Seattle' ]
-	]
+    [
+        'style'     => [ 'color' => 'blue', 'label' => 'S' ],
+        'locations' => [ 'Space Needle, Seattle' ]
+    ],
+    [
+        'style'     => [ 'color' => 'green', 'label' => 'P' ],
+        'locations' => [ 'Pike Place Market, Seattle' ]
+    ]
 ];
 
 $map_url = $client->markers( $markers, [
-	'size' => '800x600',
-	'zoom' => 14
+    'size' => '800x600',
+    'zoom' => 14
 ] );
 ```
 
@@ -156,12 +159,12 @@ $path_points = [ 'Seattle, WA', 'Tacoma, WA', 'Olympia, WA' ];
 
 // Path with styling
 $map_url = $client->path( $path_points, [
-	'path_style' => [
-		'weight'   => '5',
-		'color'    => 'blue',
-		'geodesic' => 'true'
-	],
-	'size'       => '800x400'
+    'path_style' => [
+        'weight'   => '5',
+        'color'    => 'blue',
+        'geodesic' => 'true'
+    ],
+    'size'       => '800x400'
 ] );
 ```
 
@@ -170,26 +173,37 @@ $map_url = $client->path( $path_points, [
 ```php
 // Custom map styling
 $styles = [
-	[
-		'feature' => 'water',
-		'element' => 'geometry',
-		'rules'   => [
-			'color' => '0x2c4d58'
-		]
-	],
-	[
-		'feature' => 'landscape',
-		'rules'   => [
-			'color' => '0xeaead9'
-		]
-	]
+    [
+        'feature' => 'water',
+        'element' => 'geometry',
+        'rules'   => [
+            'color' => '0x2c4d58'
+        ]
+    ],
+    [
+        'feature' => 'landscape',
+        'rules'   => [
+            'color' => '0xeaead9'
+        ]
+    ]
 ];
 
 $map_url = $client->styled( $styles, [
-	'center' => 'Seattle, WA',
-	'zoom'   => 12,
-	'size'   => '800x600'
+    'center' => 'Seattle, WA',
+    'zoom'   => 12,
+    'size'   => '800x600'
 ] );
+```
+
+### Street View Configuration
+
+```php
+// Configure street view parameters
+$client->set_heading( 180 )  // Face south
+      ->set_pitch( 20 )     // Look slightly upward
+      ->set_zoom( 1 );      // Close-up view
+
+$map_url = $client->location( 'Space Needle, Seattle' );
 ```
 
 ## API Methods
@@ -202,6 +216,7 @@ $map_url = $client->styled( $styles, [
 * `path( $path_points, $options = [] )`: Generate URL with a path
 * `styled( $styles, $options = [] )`: Generate URL with custom styling
 * `generate_image_tag( $url, $attrs = [] )`: Generate complete img HTML tag
+* `validate_api_key()`: Verify if the API key is valid
 
 ### Configuration Methods
 
@@ -210,6 +225,11 @@ $map_url = $client->styled( $styles, [
 * `set_map_type( $type )`: Set map type
 * `set_format( $format )`: Set image format
 * `set_scale( $scale )`: Set map scale
+* `set_language( $language )`: Set map labels language
+* `set_region( $region )`: Set map region bias
+* `set_heading( $degrees )`: Set street view heading (0-360)
+* `set_pitch( $degrees )`: Set street view pitch (-90 to 90)
+* `reset_options()`: Reset all options to defaults
 
 ### Options Parameters
 
@@ -220,6 +240,10 @@ $map_url = $client->styled( $styles, [
 * `maptype`: Map type (roadmap, satellite, terrain, hybrid)
 * `format`: Image format (png, jpg, gif)
 * `scale`: Image scale (1, 2, 4)
+* `language`: Map labels language (e.g., 'en', 'es', 'fr')
+* `region`: Region bias (e.g., 'US', 'GB')
+* `heading`: Street view heading in degrees (0-360)
+* `pitch`: Street view pitch in degrees (-90 to 90)
 
 #### Marker Options
 
@@ -248,6 +272,7 @@ $map_url = $client->styled( $styles, [
 * **Styled Maps**: Brand-specific map designs
 * **Direction Overview**: Show route overview
 * **Location Context**: Add visual location context
+* **Street Level Views**: Show building facades and street perspectives
 
 ## Contributing
 

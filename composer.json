@@ -23,7 +23,8 @@
     "optimize-autoloader": true,
     "sort-packages": true
   },
-  "minimum-stability": "stable",
+  "minimum-stability": "dev",
+  "prefer-stable": true,
   "support": {
     "issues": "https://github.com/arraypress/google-maps-static/issues",
     "source": "https://github.com/arraypress/google-maps-static"
