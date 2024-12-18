@@ -374,7 +374,7 @@ class Client {
 		}
 
 		return sprintf(
-			'<img src="%s"%s>',
+			'<img src="%1$s"%2$s>',
 			esc_url( $url ),
 			$attr_string
 		);
@@ -508,10 +508,10 @@ class Client {
 		foreach ( $params as $key => $value ) {
 			if ( is_array( $value ) ) {
 				foreach ( $value as $item ) {
-					$query_params[] = $key . '=' . urlencode( $item );
+					$query_params[] = $key . '=' . urlencode( (string) $item );
 				}
 			} else if ( $value !== '' ) {
-				$query_params[] = $key . '=' . urlencode( $value );
+				$query_params[] = $key . '=' . urlencode( (string) $value );
 			}
 		}
 
