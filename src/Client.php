@@ -355,6 +355,90 @@ class Client {
 	}
 
 	/**
+	 * Add this method to the existing Client class
+	 */
+	public function save_to_media_library( string $url, array $args = [] ) {
+		// Default arguments
+		$defaults = [
+			'title'       => 'Google Static Map',
+			'filename'    => 'google-map-' . time(),
+			'description' => '',
+			'alt'         => 'Google Static Map',
+			'folder'      => 'google-maps',  // Custom folder within uploads
+		];
+
+		$args = wp_parse_args( $args, $defaults );
+
+		// Download the image
+		$temp_file = download_url( $url );
+
+		if ( is_wp_error( $temp_file ) ) {
+			return $temp_file;
+		}
+
+		// Get the image mime type
+		$mime_type = wp_get_image_mime( $temp_file );
+
+		if ( ! $mime_type ) {
+			unlink( $temp_file );
+
+			return new WP_Error( 'invalid_image', __( 'Invalid image file', 'arraypress' ) );
+		}
+
+		// Get the file extension from mime type
+		$extension = explode( '/', $mime_type )[1] ?? 'png';
+
+		// Create the uploads folder if it doesn't exist
+		$upload_dir  = wp_upload_dir();
+		$maps_folder = trailingslashit( $upload_dir['basedir'] ) . $args['folder'];
+
+		if ( ! file_exists( $maps_folder ) ) {
+			wp_mkdir_p( $maps_folder );
+		}
+
+		// Prepare the file array
+		$file = [
+			'name'     => $args['filename'] . '.' . $extension,
+			'type'     => $mime_type,
+			'tmp_name' => $temp_file,
+			'error'    => 0,
+			'size'     => filesize( $temp_file )
+		];
+
+		// Custom filter for upload directory
+		add_filter( 'upload_dir', function ( $dirs ) use ( $args ) {
+			$dirs['subdir'] = '/' . $args['folder'];
+			$dirs['path']   = $dirs['basedir'] . $dirs['subdir'];
+			$dirs['url']    = $dirs['baseurl'] . $dirs['subdir'];
+
+			return $dirs;
+		} );
+
+		// Insert the image into media library
+		$attachment_id = media_handle_sideload( $file, 0, $args['title'], [
+			'post_content' => $args['description'],
+			'post_excerpt' => $args['description'],
+			'post_title'   => $args['title']
+		] );
+
+		// Remove the upload directory filter
+		remove_filter( 'upload_dir', function () {
+		} );
+
+		// Clean up
+		@unlink( $temp_file );
+
+		if ( is_wp_error( $attachment_id ) ) {
+			return $attachment_id;
+		}
+
+		// Update alt text
+		update_post_meta( $attachment_id, '_wp_attachment_image_alt', $args['alt'] );
+
+		return $attachment_id;
+	}
+
+	/**
 	 * Check if the API key is valid
 	 *
 	 * @return bool|WP_Error True if valid, WP_Error if invalid
