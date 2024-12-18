@@ -262,8 +262,8 @@ class Client {
 	 * @return string|WP_Error URL for the static map or WP_Error on failure
 	 */
 	public function markers( array $markers, array $options = [] ) {
-		$params         = array_merge( $this->default_options, $options );
-		$marker_strings = [];
+		$params        = array_merge( $this->default_options, $options );
+		$marker_params = [];
 
 		foreach ( $markers as $marker ) {
 			$marker_string = '';
@@ -280,18 +280,23 @@ class Client {
 
 				foreach ( $valid_styles as $style ) {
 					if ( isset( $marker['style'][ $style ] ) ) {
-						$marker_string .= "$style:{$marker['style'][$style]}|";
+						$marker_string .= "{$style}:{$marker['style'][$style]}|";
 					}
 				}
 			}
 
 			if ( isset( $marker['locations'] ) ) {
-				$marker_string    .= implode( '|', $marker['locations'] );
-				$marker_strings[] = $marker_string;
+				$locations     = is_array( $marker['locations'] ) ? $marker['locations'] : [ $marker['locations'] ];
+				$marker_string .= implode( '|', $locations );
+				if ( $marker_string ) {
+					$marker_params[] = $marker_string;
+				}
 			}
 		}
 
-		$params['markers'] = $marker_strings;
+		if ( ! empty( $marker_params ) ) {
+			$params['markers'] = $marker_params;
+		}
 
 		return $this->generate_url( $params );
 	}
@@ -498,18 +503,19 @@ class Client {
 		}
 
 		$params['key'] = $this->api_key;
+		$query_params  = [];
 
-		// Handle array parameters
 		foreach ( $params as $key => $value ) {
 			if ( is_array( $value ) ) {
-				foreach ( $value as $index => $item ) {
-					$params["{$key}[$index]"] = $item;
+				foreach ( $value as $item ) {
+					$query_params[] = $key . '=' . urlencode( $item );
 				}
-				unset( $params[ $key ] );
+			} else if ( $value !== '' ) {
+				$query_params[] = $key . '=' . urlencode( $value );
 			}
 		}
 
-		return add_query_arg( $params, self::API_ENDPOINT );
+		return self::API_ENDPOINT . '?' . implode( '&', $query_params );
 	}
 
 	/**
