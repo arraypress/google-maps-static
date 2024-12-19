@@ -13,14 +13,69 @@ declare( strict_types=1 );
 
 namespace ArrayPress\Google\MapsStatic;
 
+use InvalidArgumentException;
 use WP_Error;
 
 /**
  * Class Client
  *
  * A comprehensive utility class for interacting with the Google Maps Static API.
+ * This class provides methods for generating static map images with support for
+ * various features including custom markers, paths, styling, and more.
+ *
+ * @package ArrayPress\Google\MapsStatic
  */
 class Client {
+
+	/**
+	 * Valid map types
+	 *
+	 * @var array<string>
+	 */
+	private const VALID_MAP_TYPES = [
+		'roadmap',
+		'satellite',
+		'terrain',
+		'hybrid'
+	];
+
+	/**
+	 * Valid image formats
+	 *
+	 * @var array<string>
+	 */
+	private const VALID_FORMATS = [
+		'png',
+		'png8',
+		'png32',
+		'gif',
+		'jpg',
+		'jpg-baseline'
+	];
+
+	/**
+	 * Valid scale values
+	 *
+	 * @var array<int>
+	 */
+	private const VALID_SCALES = [ 1, 2, 4 ];
+
+	/**
+	 * Default options
+	 *
+	 * @var array<string, mixed>
+	 */
+	private const DEFAULT_OPTIONS = [
+		'size'     => '600x300',
+		'zoom'     => 14,
+		'scale'    => 1,
+		'format'   => 'png',
+		'maptype'  => 'roadmap',
+		'language' => '',
+		'region'   => '',
+		'heading'  => 0,
+		'pitch'    => 0
+	];
 
 	/**
 	 * API key for Google Maps
@@ -37,75 +92,83 @@ class Client {
 	private const API_ENDPOINT = 'https://maps.googleapis.com/maps/api/staticmap';
 
 	/**
-	 * Default map options
+	 * Current options for map configuration
 	 *
-	 * @var array
+	 * @var array<string, mixed>
 	 */
-	private array $default_options = [
-		'size'     => '600x300',
-		'zoom'     => 14,
-		'scale'    => 1,
-		'format'   => 'png',
-		'maptype'  => 'roadmap',
-		'language' => '',
-		'region'   => '',
-		'heading'  => 0,
-		'pitch'    => 0
-	];
-
-	/**
-	 * Allowed image formats
-	 *
-	 * @var array
-	 */
-	private array $allowed_formats = [ 'png', 'png8', 'png32', 'gif', 'jpg', 'jpg-baseline' ];
-
-	/**
-	 * Allowed map types
-	 *
-	 * @var array
-	 */
-	private array $allowed_map_types = [ 'roadmap', 'satellite', 'terrain', 'hybrid' ];
+	private array $options;
 
 	/**
 	 * Initialize the Static Maps client
 	 *
-	 * @param string $api_key API key for Google Maps
+	 * @param string $api_key Google Maps API key
 	 */
 	public function __construct( string $api_key ) {
 		$this->api_key = $api_key;
+		$this->options = self::DEFAULT_OPTIONS;
 	}
 
 	/**
 	 * Set map dimensions
 	 *
-	 * @param int $width  Map width in pixels
-	 * @param int $height Map height in pixels
+	 * @param int $width  Map width in pixels (max 640 * scale)
+	 * @param int $height Map height in pixels (max 640 * scale)
 	 *
 	 * @return self
+	 * @throws InvalidArgumentException If dimensions are invalid
 	 */
 	public function set_size( int $width, int $height ): self {
-		$this->default_options['size'] = "{$width}x{$height}";
+		if ( $width <= 0 || $height <= 0 ) {
+			throw new InvalidArgumentException( "Width and height must be positive integers." );
+		}
+		$this->options['size'] = "{$width}x{$height}";
 
 		return $this;
 	}
 
 	/**
+	 * Get current map dimensions
+	 *
+	 * @return array{width: int, height: int}
+	 */
+	public function get_size(): array {
+		list( $width, $height ) = explode( 'x', $this->options['size'] );
+
+		return [
+			'width'  => (int) $width,
+			'height' => (int) $height
+		];
+	}
+
+	/**
 	 * Set map zoom level
 	 *
-	 * @param int $zoom Zoom level (0-21)
-	 *                  0: World view
-	 *                  5: Continent/Region
-	 *                  10: City
-	 *                  15: Streets
-	 *                  20: Buildings
+	 * @param int $level Zoom level (0-21)
+	 *                   0: World view
+	 *                   5: Continent/Region
+	 *                   10: City
+	 *                   15: Streets
+	 *                   20: Buildings
 	 *
 	 * @return self
+	 * @throws InvalidArgumentException If zoom level is invalid
 	 */
-	public function set_zoom( int $zoom ): self {
-		$this->default_options['zoom'] = max( 0, min( 21, $zoom ) );
+	public function set_zoom( int $level ): self {
+		if ( $level < 0 || $level > 21 ) {
+			throw new InvalidArgumentException( "Invalid zoom level. Must be between 0 and 21." );
+		}
+		$this->options['zoom'] = $level;
 
 		return $this;
+	}
+
+	/**
+	 * Get current zoom level
+	 *
+	 * @return int Current zoom level
+	 */
+	public function get_zoom(): int {
+		return $this->options['zoom'];
 	}
 
 	/**
@@ -114,47 +177,80 @@ class Client {
 	 * @param string $type Map type (roadmap, satellite, terrain, hybrid)
 	 *
 	 * @return self
+	 * @throws InvalidArgumentException If map type is invalid
 	 */
 	public function set_map_type( string $type ): self {
-		if ( in_array( $type, $this->allowed_map_types ) ) {
-			$this->default_options['maptype'] = $type;
+		if ( ! in_array( $type, self::VALID_MAP_TYPES ) ) {
+			throw new InvalidArgumentException( "Invalid map type. Must be one of: " . implode( ', ', self::VALID_MAP_TYPES ) );
 		}
+		$this->options['maptype'] = $type;
 
 		return $this;
+	}
+
+	/**
+	 * Get current map type
+	 *
+	 * @return string Current map type
+	 */
+	public function get_map_type(): string {
+		return $this->options['maptype'];
 	}
 
 	/**
 	 * Set image format
 	 *
-	 * @param string $format Image format (png, png8, png32, gif, jpg, jpg-baseline)
+	 * @param string $format Image format
 	 *
 	 * @return self
+	 * @throws InvalidArgumentException If format is invalid
 	 */
 	public function set_format( string $format ): self {
-		if ( in_array( $format, $this->allowed_formats ) ) {
-			$this->default_options['format'] = $format;
+		if ( ! in_array( $format, self::VALID_FORMATS ) ) {
+			throw new InvalidArgumentException( "Invalid format. Must be one of: " . implode( ', ', self::VALID_FORMATS ) );
 		}
+		$this->options['format'] = $format;
 
 		return $this;
+	}
+
+	/**
+	 * Get current image format
+	 *
+	 * @return string Current image format
+	 */
+	public function get_format(): string {
+		return $this->options['format'];
 	}
 
 	/**
 	 * Set map scale
 	 *
-	 * @param int $scale Map scale (1, 2, 4)
+	 * @param int $scale Map scale (1, 2, or 4)
 	 *
 	 * @return self
+	 * @throws InvalidArgumentException If scale is invalid
 	 */
 	public function set_scale( int $scale ): self {
-		if ( in_array( $scale, [ 1, 2, 4 ] ) ) {
-			$this->default_options['scale'] = $scale;
+		if ( ! in_array( $scale, self::VALID_SCALES ) ) {
+			throw new InvalidArgumentException( "Invalid scale. Must be one of: " . implode( ', ', self::VALID_SCALES ) );
 		}
+		$this->options['scale'] = $scale;
 
 		return $this;
 	}
 
 	/**
-	 * Set the language for map labels
+	 * Get current map scale
+	 *
+	 * @return int Current scale value
+	 */
+	public function get_scale(): int {
+		return $this->options['scale'];
+	}
+
+	/**
+	 * Set language for map labels
 	 *
 	 * @param string $language Language code (e.g., 'en', 'es', 'fr')
 	 *                         See: https://developers.google.com/maps/faq#languagesupport
@@ -162,13 +258,22 @@ class Client {
 	 * @return self
 	 */
 	public function set_language( string $language ): self {
-		$this->default_options['language'] = $language;
+		$this->options['language'] = $language;
 
 		return $this;
 	}
 
 	/**
-	 * Set the region bias for the map
+	 * Get current language setting
+	 *
+	 * @return string Current language code
+	 */
+	public function get_language(): string {
+		return $this->options['language'];
+	}
+
+	/**
+	 * Set region bias
 	 *
 	 * @param string $region Region code (e.g., 'US', 'GB')
 	 *                       See: https://developers.google.com/maps/coverage
@@ -176,13 +281,22 @@ class Client {
 	 * @return self
 	 */
 	public function set_region( string $region ): self {
-		$this->default_options['region'] = $region;
+		$this->options['region'] = $region;
 
 		return $this;
 	}
 
 	/**
-	 * Set the street view camera heading
+	 * Get current region setting
+	 *
+	 * @return string Current region code
+	 */
+	public function get_region(): string {
+		return $this->options['region'];
+	}
+
+	/**
+	 * Set heading for street view
 	 *
 	 * @param float $degrees Heading in degrees (0-360)
 	 *                       0: North
@@ -191,15 +305,28 @@ class Client {
 	 *                       270: West
 	 *
 	 * @return self
+	 * @throws InvalidArgumentException If heading is invalid
 	 */
 	public function set_heading( float $degrees ): self {
-		$this->default_options['heading'] = max( 0, min( 360, $degrees ) );
+		if ( $degrees < 0 || $degrees > 360 ) {
+			throw new InvalidArgumentException( "Invalid heading. Must be between 0 and 360 degrees." );
+		}
+		$this->options['heading'] = $degrees;
 
 		return $this;
 	}
 
 	/**
-	 * Set the street view camera pitch
+	 * Get current heading
+	 *
+	 * @return float Current heading in degrees
+	 */
+	public function get_heading(): float {
+		return $this->options['heading'];
+	}
+
+	/**
+	 * Set pitch for street view
 	 *
 	 * @param float $degrees Pitch in degrees (-90 to 90)
 	 *                       -90: Straight down
@@ -207,11 +334,55 @@ class Client {
 	 *                       90: Straight up
 	 *
 	 * @return self
+	 * @throws InvalidArgumentException If pitch is invalid
 	 */
 	public function set_pitch( float $degrees ): self {
-		$this->default_options['pitch'] = max( - 90, min( 90, $degrees ) );
+		if ( $degrees < - 90 || $degrees > 90 ) {
+			throw new InvalidArgumentException( "Invalid pitch. Must be between -90 and 90 degrees." );
+		}
+		$this->options['pitch'] = $degrees;
 
 		return $this;
+	}
+
+	/**
+	 * Get current pitch
+	 *
+	 * @return float Current pitch in degrees
+	 */
+	public function get_pitch(): float {
+		return $this->options['pitch'];
+	}
+
+	/**
+	 * Get API key
+	 *
+	 * @return string Current API key
+	 */
+	public function get_api_key(): string {
+		return $this->api_key;
+	}
+
+	/**
+	 * Set API key
+	 *
+	 * @param string $api_key The API key to use
+	 *
+	 * @return self
+	 */
+	public function set_api_key( string $api_key ): self {
+		$this->api_key = $api_key;
+
+		return $this;
+	}
+
+	/**
+	 * Get all current options
+	 *
+	 * @return array<string, mixed> Current options
+	 */
+	public function get_options(): array {
+		return $this->options;
 	}
 
 	/**
@@ -220,17 +391,7 @@ class Client {
 	 * @return self
 	 */
 	public function reset_options(): self {
-		$this->default_options = [
-			'size'     => '600x300',
-			'zoom'     => 14,
-			'scale'    => 1,
-			'format'   => 'png',
-			'maptype'  => 'roadmap',
-			'language' => '',
-			'region'   => '',
-			'heading'  => 0,
-			'pitch'    => 0
-		];
+		$this->options = self::DEFAULT_OPTIONS;
 
 		return $this;
 	}
@@ -241,11 +402,11 @@ class Client {
 	 * @param float|string $location Latitude,longitude or address
 	 * @param array        $options  Additional options for the map
 	 *
-	 * @return string|WP_Error     URL for the static map or WP_Error on failure
+	 * @return string|WP_Error URL for the static map or WP_Error on failure
 	 */
 	public function location( $location, array $options = [] ) {
 		$params = array_merge(
-			$this->default_options,
+			$this->options,
 			$options,
 			[ 'center' => $location ]
 		);
@@ -262,7 +423,7 @@ class Client {
 	 * @return string|WP_Error URL for the static map or WP_Error on failure
 	 */
 	public function markers( array $markers, array $options = [] ) {
-		$params        = array_merge( $this->default_options, $options );
+		$params        = array_merge( $this->options, $options );
 		$marker_params = [];
 
 		foreach ( $markers as $marker ) {
@@ -307,10 +468,10 @@ class Client {
 	 * @param array $path_points Array of path points
 	 * @param array $options     Additional options for the map
 	 *
-	 * @return string|WP_Error   URL for the static map or WP_Error on failure
+	 * @return string|WP_Error URL for the static map or WP_Error on failure
 	 */
 	public function path( array $path_points, array $options = [] ) {
-		$params = array_merge( $this->default_options, $options );
+		$params = array_merge( $this->options, $options );
 
 		$path_string = '';
 		if ( isset( $options['path_style'] ) ) {
@@ -331,10 +492,10 @@ class Client {
 	 * @param array $styles  Map style array
 	 * @param array $options Additional map options
 	 *
-	 * @return string|WP_Error URL for the static map
+	 * @return string|WP_Error URL for the static map or WP_Error on failure
 	 */
 	public function styled( array $styles, array $options = [] ) {
-		$params = array_merge( $this->default_options, $options );
+		$params = array_merge( $this->options, $options );
 
 		foreach ( $styles as $index => $style ) {
 			$style_string = $this->format_style( $style );
@@ -352,7 +513,7 @@ class Client {
 	 * @param string $url   The static map URL
 	 * @param array  $attrs Additional img attributes
 	 *
-	 * @return string      Complete img HTML
+	 * @return string Complete img HTML
 	 */
 	public function generate_image_tag( string $url, array $attrs = [] ): string {
 		$default_attrs = [
@@ -492,7 +653,7 @@ class Client {
 	 *
 	 * @param array $params URL parameters
 	 *
-	 * @return string|WP_Error
+	 * @return string|WP_Error URL for the static map or WP_Error on failure
 	 */
 	private function generate_url( array $params ) {
 		if ( empty( $this->api_key ) ) {
@@ -523,7 +684,7 @@ class Client {
 	 *
 	 * @param array $style Style configuration
 	 *
-	 * @return string     Formatted style string
+	 * @return string Formatted style string
 	 */
 	private function format_style( array $style ): string {
 		$style_string = '';
