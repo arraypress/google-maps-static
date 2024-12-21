@@ -17,6 +17,7 @@ declare( strict_types=1 );
 
 namespace ArrayPress\Google\MapsStatic;
 
+use ArrayPress\Google\MapsStatic\Traits\Parameters;
 use WP_Error;
 
 /**
