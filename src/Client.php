@@ -2,6 +2,10 @@
 /**
  * Google Maps Static API Client Class
  *
+ * A comprehensive utility class for interacting with the Google Maps Static API.
+ * This class provides methods for generating static map images with support for
+ * various features including custom markers, paths, styling, and more.
+ *
  * @package     ArrayPress\Google\MapsStatic
  * @copyright   Copyright (c) 2024, ArrayPress Limited
  * @license     GPL2+
@@ -13,76 +17,17 @@ declare( strict_types=1 );
 
 namespace ArrayPress\Google\MapsStatic;
 
-use InvalidArgumentException;
 use WP_Error;
 
 /**
  * Class Client
  *
- * A comprehensive utility class for interacting with the Google Maps Static API.
- * This class provides methods for generating static map images with support for
- * various features including custom markers, paths, styling, and more.
+ * Main client class for generating static maps using the Google Maps Static API.
  *
  * @package ArrayPress\Google\MapsStatic
  */
 class Client {
-
-	/**
-	 * Valid map types
-	 *
-	 * @var array<string>
-	 */
-	private const VALID_MAP_TYPES = [
-		'roadmap',
-		'satellite',
-		'terrain',
-		'hybrid'
-	];
-
-	/**
-	 * Valid image formats
-	 *
-	 * @var array<string>
-	 */
-	private const VALID_FORMATS = [
-		'png',
-		'png8',
-		'png32',
-		'gif',
-		'jpg',
-		'jpg-baseline'
-	];
-
-	/**
-	 * Valid scale values
-	 *
-	 * @var array<int>
-	 */
-	private const VALID_SCALES = [ 1, 2, 4 ];
-
-	/**
-	 * Default options
-	 *
-	 * @var array<string, mixed>
-	 */
-	private const DEFAULT_OPTIONS = [
-		'size'     => '600x300',
-		'zoom'     => 14,
-		'scale'    => 1,
-		'format'   => 'png',
-		'maptype'  => 'roadmap',
-		'language' => '',
-		'region'   => '',
-		'heading'  => 0,
-		'pitch'    => 0
-	];
-
-	/**
-	 * API key for Google Maps
-	 *
-	 * @var string
-	 */
-	private string $api_key;
+	use Parameters;
 
 	/**
 	 * Base URL for the Static Maps API
@@ -92,322 +37,24 @@ class Client {
 	private const API_ENDPOINT = 'https://maps.googleapis.com/maps/api/staticmap';
 
 	/**
-	 * Current options for map configuration
-	 *
-	 * @var array<string, mixed>
-	 */
-	private array $options;
-
-	/**
 	 * Initialize the Static Maps client
 	 *
 	 * @param string $api_key Google Maps API key
 	 */
 	public function __construct( string $api_key ) {
-		$this->api_key = $api_key;
-		$this->options = self::DEFAULT_OPTIONS;
-	}
-
-	/**
-	 * Set map dimensions
-	 *
-	 * @param int $width  Map width in pixels (max 640 * scale)
-	 * @param int $height Map height in pixels (max 640 * scale)
-	 *
-	 * @return self
-	 * @throws InvalidArgumentException If dimensions are invalid
-	 */
-	public function set_size( int $width, int $height ): self {
-		if ( $width <= 0 || $height <= 0 ) {
-			throw new InvalidArgumentException( "Width and height must be positive integers." );
-		}
-		$this->options['size'] = "{$width}x{$height}";
-
-		return $this;
-	}
-
-	/**
-	 * Get current map dimensions
-	 *
-	 * @return array{width: int, height: int}
-	 */
-	public function get_size(): array {
-		list( $width, $height ) = explode( 'x', $this->options['size'] );
-
-		return [
-			'width'  => (int) $width,
-			'height' => (int) $height
-		];
-	}
-
-	/**
-	 * Set map zoom level
-	 *
-	 * @param int $level Zoom level (0-21)
-	 *                   0: World view
-	 *                   5: Continent/Region
-	 *                   10: City
-	 *                   15: Streets
-	 *                   20: Buildings
-	 *
-	 * @return self
-	 * @throws InvalidArgumentException If zoom level is invalid
-	 */
-	public function set_zoom( int $level ): self {
-		if ( $level < 0 || $level > 21 ) {
-			throw new InvalidArgumentException( "Invalid zoom level. Must be between 0 and 21." );
-		}
-		$this->options['zoom'] = $level;
-
-		return $this;
-	}
-
-	/**
-	 * Get current zoom level
-	 *
-	 * @return int Current zoom level
-	 */
-	public function get_zoom(): int {
-		return $this->options['zoom'];
-	}
-
-	/**
-	 * Set map type
-	 *
-	 * @param string $type Map type (roadmap, satellite, terrain, hybrid)
-	 *
-	 * @return self
-	 * @throws InvalidArgumentException If map type is invalid
-	 */
-	public function set_map_type( string $type ): self {
-		if ( ! in_array( $type, self::VALID_MAP_TYPES ) ) {
-			throw new InvalidArgumentException( "Invalid map type. Must be one of: " . implode( ', ', self::VALID_MAP_TYPES ) );
-		}
-		$this->options['maptype'] = $type;
-
-		return $this;
-	}
-
-	/**
-	 * Get current map type
-	 *
-	 * @return string Current map type
-	 */
-	public function get_map_type(): string {
-		return $this->options['maptype'];
-	}
-
-	/**
-	 * Set image format
-	 *
-	 * @param string $format Image format
-	 *
-	 * @return self
-	 * @throws InvalidArgumentException If format is invalid
-	 */
-	public function set_format( string $format ): self {
-		if ( ! in_array( $format, self::VALID_FORMATS ) ) {
-			throw new InvalidArgumentException( "Invalid format. Must be one of: " . implode( ', ', self::VALID_FORMATS ) );
-		}
-		$this->options['format'] = $format;
-
-		return $this;
-	}
-
-	/**
-	 * Get current image format
-	 *
-	 * @return string Current image format
-	 */
-	public function get_format(): string {
-		return $this->options['format'];
-	}
-
-	/**
-	 * Set map scale
-	 *
-	 * @param int $scale Map scale (1, 2, or 4)
-	 *
-	 * @return self
-	 * @throws InvalidArgumentException If scale is invalid
-	 */
-	public function set_scale( int $scale ): self {
-		if ( ! in_array( $scale, self::VALID_SCALES ) ) {
-			throw new InvalidArgumentException( "Invalid scale. Must be one of: " . implode( ', ', self::VALID_SCALES ) );
-		}
-		$this->options['scale'] = $scale;
-
-		return $this;
-	}
-
-	/**
-	 * Get current map scale
-	 *
-	 * @return int Current scale value
-	 */
-	public function get_scale(): int {
-		return $this->options['scale'];
-	}
-
-	/**
-	 * Set language for map labels
-	 *
-	 * @param string $language Language code (e.g., 'en', 'es', 'fr')
-	 *                         See: https://developers.google.com/maps/faq#languagesupport
-	 *
-	 * @return self
-	 */
-	public function set_language( string $language ): self {
-		$this->options['language'] = $language;
-
-		return $this;
-	}
-
-	/**
-	 * Get current language setting
-	 *
-	 * @return string Current language code
-	 */
-	public function get_language(): string {
-		return $this->options['language'];
-	}
-
-	/**
-	 * Set region bias
-	 *
-	 * @param string $region Region code (e.g., 'US', 'GB')
-	 *                       See: https://developers.google.com/maps/coverage
-	 *
-	 * @return self
-	 */
-	public function set_region( string $region ): self {
-		$this->options['region'] = $region;
-
-		return $this;
-	}
-
-	/**
-	 * Get current region setting
-	 *
-	 * @return string Current region code
-	 */
-	public function get_region(): string {
-		return $this->options['region'];
-	}
-
-	/**
-	 * Set heading for street view
-	 *
-	 * @param float $degrees Heading in degrees (0-360)
-	 *                       0: North
-	 *                       90: East
-	 *                       180: South
-	 *                       270: West
-	 *
-	 * @return self
-	 * @throws InvalidArgumentException If heading is invalid
-	 */
-	public function set_heading( float $degrees ): self {
-		if ( $degrees < 0 || $degrees > 360 ) {
-			throw new InvalidArgumentException( "Invalid heading. Must be between 0 and 360 degrees." );
-		}
-		$this->options['heading'] = $degrees;
-
-		return $this;
-	}
-
-	/**
-	 * Get current heading
-	 *
-	 * @return float Current heading in degrees
-	 */
-	public function get_heading(): float {
-		return $this->options['heading'];
-	}
-
-	/**
-	 * Set pitch for street view
-	 *
-	 * @param float $degrees Pitch in degrees (-90 to 90)
-	 *                       -90: Straight down
-	 *                       0: Horizontal
-	 *                       90: Straight up
-	 *
-	 * @return self
-	 * @throws InvalidArgumentException If pitch is invalid
-	 */
-	public function set_pitch( float $degrees ): self {
-		if ( $degrees < - 90 || $degrees > 90 ) {
-			throw new InvalidArgumentException( "Invalid pitch. Must be between -90 and 90 degrees." );
-		}
-		$this->options['pitch'] = $degrees;
-
-		return $this;
-	}
-
-	/**
-	 * Get current pitch
-	 *
-	 * @return float Current pitch in degrees
-	 */
-	public function get_pitch(): float {
-		return $this->options['pitch'];
-	}
-
-	/**
-	 * Get API key
-	 *
-	 * @return string Current API key
-	 */
-	public function get_api_key(): string {
-		return $this->api_key;
-	}
-
-	/**
-	 * Set API key
-	 *
-	 * @param string $api_key The API key to use
-	 *
-	 * @return self
-	 */
-	public function set_api_key( string $api_key ): self {
-		$this->api_key = $api_key;
-
-		return $this;
-	}
-
-	/**
-	 * Get all current options
-	 *
-	 * @return array<string, mixed> Current options
-	 */
-	public function get_options(): array {
-		return $this->options;
-	}
-
-	/**
-	 * Reset all options to their default values
-	 *
-	 * @return self
-	 */
-	public function reset_options(): self {
-		$this->options = self::DEFAULT_OPTIONS;
-
-		return $this;
+		$this->set_api_key( $api_key );
 	}
 
 	/**
 	 * Generate static map URL for a location
 	 *
 	 * @param float|string $location Latitude,longitude or address
-	 * @param array        $options  Additional options for the map
 	 *
 	 * @return string|WP_Error URL for the static map or WP_Error on failure
 	 */
-	public function location( $location, array $options = [] ) {
+	public function location( $location ) {
 		$params = array_merge(
-			$this->options,
-			$options,
+			$this->get_all_params()['map'],
 			[ 'center' => $location ]
 		);
 
@@ -417,32 +64,21 @@ class Client {
 	/**
 	 * Generate static map URL with markers
 	 *
-	 * @param array $markers Array of marker configurations
-	 * @param array $options Additional options for the map
+	 * @param array $markers Array of marker locations
 	 *
 	 * @return string|WP_Error URL for the static map or WP_Error on failure
 	 */
-	public function markers( array $markers, array $options = [] ) {
-		$params        = array_merge( $this->options, $options );
+	public function markers( array $markers ) {
+		$params        = $this->get_all_params()['map'];
 		$marker_params = [];
 
 		foreach ( $markers as $marker ) {
 			$marker_string = '';
+			$style         = $this->get_marker_style();
 
-			if ( isset( $marker['style'] ) ) {
-				$valid_styles = [
-					'size',
-					'color',
-					'label',
-					'scale',
-					'anchor',
-					'icon'
-				];
-
-				foreach ( $valid_styles as $style ) {
-					if ( isset( $marker['style'][ $style ] ) ) {
-						$marker_string .= "{$style}:{$marker['style'][$style]}|";
-					}
+			if ( ! empty( $style ) ) {
+				foreach ( $style as $key => $value ) {
+					$marker_string .= "{$key}:{$value}|";
 				}
 			}
 
@@ -466,17 +102,17 @@ class Client {
 	 * Generate static map URL with a path
 	 *
 	 * @param array $path_points Array of path points
-	 * @param array $options     Additional options for the map
 	 *
 	 * @return string|WP_Error URL for the static map or WP_Error on failure
 	 */
-	public function path( array $path_points, array $options = [] ) {
-		$params = array_merge( $this->options, $options );
-
+	public function path( array $path_points ) {
+		$params      = $this->get_all_params()['map'];
 		$path_string = '';
-		if ( isset( $options['path_style'] ) ) {
-			foreach ( $options['path_style'] as $key => $value ) {
-				$path_string .= "$key:$value|";
+
+		$style = $this->get_path_style();
+		if ( ! empty( $style ) ) {
+			foreach ( $style as $key => $value ) {
+				$path_string .= "{$key}:{$value}|";
 			}
 		}
 
@@ -489,18 +125,16 @@ class Client {
 	/**
 	 * Generate static map URL with custom styles
 	 *
-	 * @param array $styles  Map style array
-	 * @param array $options Additional map options
-	 *
 	 * @return string|WP_Error URL for the static map or WP_Error on failure
 	 */
-	public function styled( array $styles, array $options = [] ) {
-		$params = array_merge( $this->options, $options );
+	public function styled() {
+		$params = $this->get_all_params()['map'];
+		$styles = $this->get_styles();
 
 		foreach ( $styles as $index => $style ) {
 			$style_string = $this->format_style( $style );
 			if ( $style_string ) {
-				$params["style[$index]"] = $style_string;
+				$params["style[{$index}]"] = $style_string;
 			}
 		}
 
@@ -560,29 +194,23 @@ class Client {
 
 		$args = wp_parse_args( $args, $defaults );
 
+		// Download the image
 		$temp_file = download_url( $url );
-
 		if ( is_wp_error( $temp_file ) ) {
 			return $temp_file;
 		}
 
+		// Verify it's an image
 		$mime_type = wp_get_image_mime( $temp_file );
-
 		if ( ! $mime_type ) {
 			unlink( $temp_file );
 
 			return new WP_Error( 'invalid_image', __( 'Invalid image file', 'arraypress' ) );
 		}
 
-		$extension   = explode( '/', $mime_type )[1] ?? 'png';
-		$upload_dir  = wp_upload_dir();
-		$maps_folder = trailingslashit( $upload_dir['basedir'] ) . $args['folder'];
-
-		if ( ! file_exists( $maps_folder ) ) {
-			wp_mkdir_p( $maps_folder );
-		}
-
-		$file = [
+		// Setup the file array
+		$extension = explode( '/', $mime_type )[1] ?? 'png';
+		$file      = [
 			'name'     => $args['filename'] . '.' . $extension,
 			'type'     => $mime_type,
 			'tmp_name' => $temp_file,
@@ -590,6 +218,7 @@ class Client {
 			'size'     => filesize( $temp_file )
 		];
 
+		// Prepare upload directory
 		add_filter( 'upload_dir', function ( $dirs ) use ( $args ) {
 			$dirs['subdir'] = '/' . $args['folder'];
 			$dirs['path']   = $dirs['basedir'] . $dirs['subdir'];
@@ -598,21 +227,23 @@ class Client {
 			return $dirs;
 		} );
 
+		// Add the image to media library
 		$attachment_id = media_handle_sideload( $file, 0, $args['title'], [
 			'post_content' => $args['description'],
 			'post_excerpt' => $args['description'],
 			'post_title'   => $args['title']
 		] );
 
+		// Clean up
 		remove_filter( 'upload_dir', function () {
 		} );
-
 		@unlink( $temp_file );
 
 		if ( is_wp_error( $attachment_id ) ) {
 			return $attachment_id;
 		}
 
+		// Set alt text
 		update_post_meta( $attachment_id, '_wp_attachment_image_alt', $args['alt'] );
 
 		return $attachment_id;
@@ -624,7 +255,7 @@ class Client {
 	 * @return bool|WP_Error True if valid, WP_Error if invalid
 	 */
 	public function validate_api_key() {
-		$test_url = $this->location( '0,0', [ 'size' => '1x1' ] );
+		$test_url = $this->location( '0,0' );
 
 		if ( is_wp_error( $test_url ) ) {
 			return $test_url;
